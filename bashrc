@@ -106,38 +106,63 @@ if ! shopt -oq posix; then
 fi
 
 # Nathan's Environment Variables
-export PATH="/home/nathan/.local/jdk-13.0.2/bin:$PATH"
-export PYTHONPATH="/home/nathan/Programs/tools:$PYTHONPATH"
+export PYTHONPATH="/home/nathan/software/tools:$PYTHONPATH"
 export EDITOR="/usr/bin/vim"
 
 # Nathan's Aliases
 alias mv='mv -v'
 alias jobs="jobs -l"
-alias mypublicip='dig +short myip.opendns.com @resolver1.opendns.com'
-alias diskuse='df -h | egrep -h "Filesystem|nvme0n1p2"'
-alias programs='cd /home/nathan/Programs/'
-alias papers='python3 /home/nathan/Documents/Resources/papers/new_entry.py'
-alias papersfolder='cd /home/nathan/Documents/Resources/papers'
+alias publicip='dig +short myip.opendns.com @resolver1.opendns.com'
+alias diskuse='df -h .'
+alias programs='cd /home/nathan/programs/'
 alias dv='setxkbmap dvorak'
 alias ek='setxkbmap us'
 alias jupyterlabserver="jupyter lab --no-browser --ip=0.0.0.0 --port=8888"
-alias rstudioserver="sudo rstudio-server start --no-browser --port=8787"
 alias scratch="vim /home/nathan/scratch"
-alias clearsandbox="rm -rf /home/nathan/sandbox && mkdir /home/nathan/sandbox"
-alias android-studio='/home/nathan/.local/android-studio/bin/studio.sh'
+alias clearsandbox="rm -rf /home/nathan/sandbox/*"
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+alias fileserver="python -m http.server 8891"
+alias ls="ls -h"
+alias mydate="date +'%Y-%m-%d %H:%M:%S'"
+alias please="sudo"
+alias bc="bc -l"
 
 # Nathan's Methods
 notifyme(){
                 start=$(date +%s)
                 "$@"
                 notify-send "I'm Finished!" "\"$(echo $@)\" took $(($(date +%s) - start)) seconds to finish."
-                paplay ~/.local/sndfiles/ding_ding.wav
+                # paplay ~/.local/sndfiles/ding_ding.wav
 }
 
 parse_git_branch() {
     git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
 }
+
+runtime() {
+    let d1=$1
+    let d2=$2
+    if [[ $d1 -eq $d2 ]]
+    then
+        printf "0 days, 0 hours, 0 minutes, 0 seconds"
+	return
+    elif [[ $d1 -gt $d2 ]]
+    then
+        dt=$(echo "d1 - d2" | bc -l)
+    elif [[ $d1 -lt $d2 ]]
+    then
+        dt=$(echo "$d2 - $d1" | bc -l)
+    fi
+    dd=$(echo "$dt/86400" | bc)
+    dt2=$(echo "$dt-86400*$dd" | bc)
+    dh=$(echo "$dt2/3600" | bc)
+    dt3=$(echo "$dt2-3600*$dh" | bc)
+    dm=$(echo "$dt3/60" | bc)
+    ds=$(echo "$dt3-60*$dm" | bc)
+    printf "%d days, %d hours, %d minutes, %d seconds" $dd $dh $dm $ds
+    return
+}
+export -f runtime
 
 # This allows me to set a teleportation checkpoint for quick
 # temporary customizable leaps around the file tree.
