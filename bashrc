@@ -126,6 +126,7 @@ alias ls="ls -h"
 alias mydate="date +'%Y-%m-%d %H:%M:%S'"
 alias please="sudo"
 alias bc="bc -l"
+alias grep="grep -E"
 
 # Nathan's Methods
 notifyme(){
