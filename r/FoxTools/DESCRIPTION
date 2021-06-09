@@ -1,0 +1,15 @@
+Package: FoxTools
+Title: General Collection of R Tools for Nathan Fox
+Version: 0.1
+Authors@R: as.person(c(
+    "Nathan Fox <nfox@cshl.edu> [aut, cre]"
+  ))
+Description: Collection of useful general-purpose utilities that
+    the author put into a package for his own use.
+Depends: R (>= 3.6.0)
+License: GNU GPLv3
+LazyData: true
+Encoding: UTF-8
+Imports:
+    ggplot2,
+RoxygenNote: 7.1.1
