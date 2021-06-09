@@ -1,0 +1,24 @@
+Package: SCEUtils
+Title: Tools for scRNA-seq Analysis of SingleCellExperiment Objects.
+Version: 0.1
+Authors@R: as.person(c(
+    "Nathan Fox <nfox@cshl.edu> [aut, cre]"
+  ))
+Description: Provides a collection of commonly used protocols for
+    conducting analysis of scRNA-seq data in a SingleCellExperiment
+    object. Intended primarily for use by the author.
+Depends: R (>= 3.6.0)
+License: GNU GPLv3
+LazyData: true
+Encoding: UTF-8
+Imports:
+    SingleCellExperiment,
+    SummarizedExperiment,
+    ggplot2,
+    cowplot,
+    rsvd,
+    DropletUtils,
+    RColorBrewer,
+    genefilter,
+    matrixTests
+RoxygenNote: 7.1.1

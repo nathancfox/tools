@@ -1,0 +1,16 @@
+Package: ImportAs
+Title: Single Function for Namespace Management
+Version: 0.1
+Authors@R: as.person(c(
+    "Nathan Fox <nfox@cshl.edu> [aut, cre]"
+  ))
+Description: A single function that can be loaded before
+    anything else. Enables loading packages into aliased
+    namespaces.
+Depends: R (>= 3.6.0)
+License: GNU GPLv3
+LazyData: true
+Encoding: UTF-8
+Imports:
+    namespace
+RoxygenNote: 7.1.1
