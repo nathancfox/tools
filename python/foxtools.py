@@ -1309,42 +1309,42 @@ def print_timedelta(timedelta, short=False):
         unit['s'] = ' second' if seconds == 1 else ' seconds'
     if short:
         if days > 0:
-            return f'{sign_string}'
-                   f'{days:02d}{unit["d"]}'
-                   f'{hours:02d}{unit["h"]}'
-                   f'{minutes:02d}{unit["m"]}'
-                   f'{seconds:02d}{unit["s"]}'
+            return (f'{sign_string}'
+                    f'{days:02d}{unit["d"]}'
+                    f'{hours:02d}{unit["h"]}'
+                    f'{minutes:02d}{unit["m"]}'
+                    f'{seconds:02d}{unit["s"]}')
         elif hours > 0:
-            return f'{sign_string}'
-                   f'{hours:02d}{unit["h"]}'
-                   f'{minutes:02d}{unit["m"]}'
-                   f'{seconds:02d}{unit["s"]}'
+            return (f'{sign_string}'
+                    f'{hours:02d}{unit["h"]}'
+                    f'{minutes:02d}{unit["m"]}'
+                    f'{seconds:02d}{unit["s"]}')
         elif minutes > 0:
-            return f'{sign_string}'
-                   f'{minutes:02d}{unit["m"]}'
-                   f'{seconds:02d}{unit["s"]}'
+            return (f'{sign_string}'
+                    f'{minutes:02d}{unit["m"]}'
+                    f'{seconds:02d}{unit["s"]}')
         else:
-            return f'{sign_string}'
-                   f'{seconds}{unit["s"]}'
+            return (f'{sign_string}'
+                    f'{seconds}{unit["s"]}')
     else:
         if days > 0:
-            return f'{sign_string}'
-                   f'{days}{unit["d"]}'
-                   f'{hours}{unit["h"]}'
-                   f'{minutes}{unit["m"]}'
-                   f'{seconds}{unit["s"]}'
+            return (f'{sign_string}'
+                    f'{days}{unit["d"]}'
+                    f'{hours}{unit["h"]}'
+                    f'{minutes}{unit["m"]}'
+                    f'{seconds}{unit["s"]}')
         elif hours > 0:
-            return f'{sign_string}'
-                   f'{hours}{unit["h"]}'
-                   f'{minutes}{unit["m"]}'
-                   f'{seconds}{unit["s"]}'
+            return (f'{sign_string}'
+                    f'{hours}{unit["h"]}'
+                    f'{minutes}{unit["m"]}'
+                    f'{seconds}{unit["s"]}')
         elif minutes > 0:
-            return f'{sign_string}'
-                   f'{minutes}{unit["m"]}'
-                   f'{seconds}{unit["s"]}'
+            return (f'{sign_string}'
+                    f'{minutes}{unit["m"]}'
+                    f'{seconds}{unit["s"]}')
         else:
-            return f'{sign_string}'
-                   f'{seconds}{unit["s"]}'
+            return (f'{sign_string}'
+                    f'{seconds}{unit["s"]}')
 
 
 def print_h5_tree(h5_item, show_dtypes=False, prefix='', file=sys.stdout):
