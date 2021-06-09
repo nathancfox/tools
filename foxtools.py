@@ -5,16 +5,22 @@ methods for any field, the imports are distributed to the methods that need
 them to reduce import time to only the functions that are used. Python is
 good about caching and not doubling imports for different namespaces, so this
 shouldn't be a problem. If a list of dependencies is needed, run the shell
-command 'grep "^import" foxtools.py'.
+command 'grep "^\s*import" foxtools.py | sort -u'.
 
 General
 -------
   smart_dir
+  print_globals
   get_timestamp
   get_uuid
   gunzip
   extract_tar
   convert_dict_to_dataframe
+  bytes_to_human
+  human_to_bytes
+  invalid_arg_err_msg
+  get_exception_string
+  convert_seconds
 
 Math
 ----
@@ -22,7 +28,8 @@ Math
   round_down
   transpose_expr_matrix
   pairwise_dist
-  
+  compare_sparse
+
 Plotting
 --------
   year_to_num
@@ -35,6 +42,8 @@ CLI Output
   pretty_str_text
   get_ruler
   color_print
+  print_timedelta
+  print_h5_tree
 
 CLI Input
 ---------
@@ -43,6 +52,13 @@ CLI Input
   get_yes_or_no
   get_command
 """
+
+__version__ = '0.9'
+__author__ = 'Nathan Fox'
+
+# Global Imports
+import sys
+
 
 ################################################################################
 #                                   General                                    #
@@ -83,8 +99,6 @@ def smart_dir(obj):
     Returns:
         Nothing is returned, however the sorted output
         is printed to the standard out.
-
-    Raises: None
     """
     python_reserved_methods = []
     python_reserved_other = []
@@ -113,16 +127,16 @@ def smart_dir(obj):
                 public_methods.append((a, a_type))
             else:
                 public_other.append((a, a_type))
-    python_reserved_methods.sort(key = lambda x: x[0])
-    python_reserved_other.sort(key = lambda x: x[0])
-    internal_methods.sort(key = lambda x: x[0])
-    internal_other.sort(key = lambda x: x[0])
-    public_methods.sort(key = lambda x: x[0])
-    public_other.sort(key = lambda x: x[0])
+    python_reserved_methods.sort(key=lambda x: x[0])
+    python_reserved_other.sort(key=lambda x: x[0])
+    internal_methods.sort(key=lambda x: x[0])
+    internal_other.sort(key=lambda x: x[0])
+    public_methods.sort(key=lambda x: x[0])
+    public_other.sort(key=lambda x: x[0])
     obj_type = str(type(obj)).split('\'')[1]
-    print('------'+ ('-' * (len(obj_type) + 4)))
+    print('------' + ('-' * (len(obj_type) + 4)))
     print(f'  Type: {obj_type}')
-    print('------'+ ('-' * (len(obj_type) + 4)))
+    print('------' + ('-' * (len(obj_type) + 4)))
     print()
     if len(python_reserved_methods) != 0:
         print('Python Reserved Methods')
@@ -160,8 +174,42 @@ def smart_dir(obj):
         for a, a_type in public_other:
             print(f'  {a:{max_name_width}s} : {a_type}')
         print()
+    return
 
-def get_timestamp(mode = 'both', long = True):
+
+def print_globals(printed=True, width=16):
+    """Summarizes non-internal global variables.
+
+    Iterates over all variables in the global namespace,
+    drops all variables with a leading underscore (typically
+    indicates internal, protected, or private variables),
+    and prints or returns them.
+
+    Args:
+        print: bool. Indicates if the name/type tuples
+            should be returned in a list, or printed.
+        width: int. Passed to the format string to
+            to provide field width for the variable name.
+            Only valid if printing.
+
+    Returns:
+        list of name/type tuples for all the found variables
+        if print is not True. None otherwise.
+    """
+    import inspect
+    caller_globals = dict(inspect.getmembers(
+                              inspect.stack()[1][0])
+                     )["f_globals"]
+    variables = [(g[0], type(g[1]))
+                 for g in caller_globals.items() if not g[0].startswith('_')]
+    if print:
+        for n in [f'{g[0]:{width}s} : {g[1]}' for g in variables]:
+            print(n)
+    else:
+        return variables
+
+
+def get_timestamp(mode='both', long=True):
     """Generates string timestamp.
 
     Generates a string version of a datestamp, a timestamp,
@@ -170,7 +218,7 @@ def get_timestamp(mode = 'both', long = True):
         date: '%y%m%d'
         time: '%H%M%S'
         both: '%y%m%d_%H%M%S'
-    
+
     Args:
         mode: String. Must be one of {'both', 'date', 'time'}
         long: Boolean indicating whether to do a long format
@@ -181,7 +229,7 @@ def get_timestamp(mode = 'both', long = True):
             --------
             long  : 2019-01-01 13:03:24
             short : 190101_130324
-    
+
     Returns:
         String timestamp of the date, time, or both. See above
         for format.
@@ -190,7 +238,7 @@ def get_timestamp(mode = 'both', long = True):
         ValueError: Invalid value passed as mode argument
     """
     import datetime as dt
-    
+
     now = dt.datetime.now()
     if long:
         date_stamp = now.strftime('%Y-%m-%d')
@@ -201,21 +249,23 @@ def get_timestamp(mode = 'both', long = True):
         time_stamp = now.strftime('%H%M%S')
         datetime_stamp = date_stamp + '_' + time_stamp
     if mode == 'both':
-        return(datetime_stamp)
+        return datetime_stamp
     elif mode == 'date':
-        return(date_stamp)
+        return date_stamp
     elif mode == 'time':
-        return(time_stamp)
+        return time_stamp
     else:
         raise ValueError('mode must be one of {\'both\', \'date\', \'time\'}!')
+
 
 def get_uuid():
     """Generates string version of a new UUID4."""
     import uuid
-    
-    return(str(uuid.uuid4()))
 
-def gunzip(files, remove = True):
+    return str(uuid.uuid4())
+
+
+def gunzip(files, remove=True):
     """Gunzips files
 
     Given a list of file paths, gunzips them, and optionally
@@ -226,14 +276,11 @@ def gunzip(files, remove = True):
             should be a path to a gzipped file to be gunzipped.
         remove: Boolean. If True, the gzipped files will be
             removed, leaving only the gunzipped files.
-    
-    Returns: None
-    Raises: None
     """
     import os
     import gzip
     import shutil
-    
+
     if isinstance(files, str):
         file = files
         files = []
@@ -248,9 +295,11 @@ def gunzip(files, remove = True):
             with open(os.path.join(path, new_filename), 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
         if remove:
-            os.remove(os.path.join(path, filename)) 
-        
-def extract_tar(tar_file, outpath = "", remove = True):
+            os.remove(os.path.join(path, filename))
+    return
+
+
+def extract_tar(tar_file, outpath="", remove=True):
     """Extracts a tar archive.
 
     Extracts a tar archive to the given path and filters for
@@ -266,14 +315,10 @@ def extract_tar(tar_file, outpath = "", remove = True):
             holding the tar archive.
         remove: Boolean. If True, the original tar archive will be
             deleted.
-
-    Returns: None
-
-    Raises : None
     """
     import os
     import tarfile
-    
+
     with tarfile.open(tar_file) as tar:
         tar_member = tar.next()
         skipped_members = []
@@ -285,14 +330,16 @@ def extract_tar(tar_file, outpath = "", remove = True):
                 skipped_members.append(tar_member.name)
                 continue
             else:
-                tar.extract(tar_member, path = outpath)
+                tar.extract(tar_member, path=outpath)
             tar_member = tar.next()
     if remove:
         os.remove(tar_file)
     for sm in skipped_members:
         print(f'WARNING: {sm} not extracted due to potentially dangerous '
-               'filename. Please extract manually!')
-    
+              'filename. Please extract manually!')
+    return
+
+
 def convert_dict_to_dataframe(dict_of_dicts):
     """Convert dict of dicts to a Pandas DataFrame.
 
@@ -310,14 +357,14 @@ def convert_dict_to_dataframe(dict_of_dicts):
                   age sex
         Sample_1   13   F
         Sample_2   14   M
-        
+
     Args:
         dict_of_dicts: Dict. The keys of this dict
             will be the Index of the dataframe. The values
             must be dicts with identical keys. The inner keys
             will be the column names of the dataframe. The
             inner values will be the values of the dataframe.
-    
+
     Returns:
         A Pandas DataFrame holding the converted dict of dicts.
 
@@ -325,7 +372,7 @@ def convert_dict_to_dataframe(dict_of_dicts):
         ValueError: If all inner dicts don't have identical keys.
     """
     import pandas as pd
-    
+
     first_dict = True
     index = []
     for k, v in dict_of_dicts.items():
@@ -341,56 +388,292 @@ def convert_dict_to_dataframe(dict_of_dicts):
         for k2, v2 in v.items():
             new_dict[k2].append(v2)
     new_df = pd.DataFrame(new_dict, index = index)
-    return(new_df)
+    return new_df
 
-def convert_seconds(seconds, days=False):
-    """Converts seconds to hours, minutes, and seconds.
+
+def bytes_to_human(n, format='%(value).1f %(symbol)s', symbols='customary'):
+    """
+    Convert n bytes into a human readable string based on format.
+    symbols can be either "customary", "customary_ext", "iec" or "iec_ext",
+    see: http://goo.gl/kTQMs
+
+      >>> bytes_to_human(0)
+      '0.0 B'
+      >>> bytes_to_human(0.9)
+      '0.0 B'
+      >>> bytes_to_human(1)
+      '1.0 B'
+      >>> bytes_to_human(1.9)
+      '1.0 B'
+      >>> bytes_to_human(1024)
+      '1.0 K'
+      >>> bytes_to_human(1048576)
+      '1.0 M'
+      >>> bytes_to_human(1099511627776127398123789121)
+      '909.5 Y'
+
+      >>> bytes_to_human(9856, symbols="customary")
+      '9.6 K'
+      >>> bytes_to_human(9856, symbols="customary_ext")
+      '9.6 kilo'
+      >>> bytes_to_human(9856, symbols="iec")
+      '9.6 Ki'
+      >>> bytes_to_human(9856, symbols="iec_ext")
+      '9.6 kibi'
+
+      >>> bytes_to_human(10000, "%(value).1f %(symbol)s/sec")
+      '9.8 K/sec'
+
+      >>> # precision can be adjusted by playing with %f operator
+      >>> bytes_to_human(10000, format="%(value).5f %(symbol)s")
+      '9.76562 K'
+
+    Bytes-to-human / human-to-bytes converter.
+    Based on: http://goo.gl/kTQMs
+    Working with Python 2.x and 3.x.
+
+    Author: Giampaolo Rodola' <g.rodola [AT] gmail [DOT] com>
+    License: MIT
 
     Args:
-        seconds: Integer. Number of seconds to be converted.
-        days: Boolean. If True, a 4-member tuple is returned
+        n: int. Number of bytes to be converted.
+        format: str. Format string for the output. "%(value)"
+            and "%(symbol)" cannot be changed.
+        symbols: str. The label set to use. Options are below.
+            'customary'     : ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'),
+            'customary_ext' : ('byte', 'kilo', 'mega', 'giga', 'tera', 'peta',
+                               'exa', 'zetta', 'iotta'),
+            'iec'           : ('Bi', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi',
+                               'Ei', 'Zi', 'Yi'),
+            'iec_ext'       : ('byte', 'kibi', 'mebi', 'gibi', 'tebi',
+                               'pebi', 'exbi', 'zebi', 'yobi')
+    Raises:
+        ValueError: n < 0 or symbols is not a valid options.
+        AssertionError: Invalid symbols option got past the validation check.
+    """
+    SYMBOLS = {
+        'customary'     : ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'),
+        'customary_ext' : ('byte', 'kilo', 'mega', 'giga', 'tera', 'peta',
+                           'exa', 'zetta', 'iotta'),
+        'iec'           : ('Bi', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi',
+                           'Ei', 'Zi', 'Yi'),
+        'iec_ext'       : ('byte', 'kibi', 'mebi', 'gibi', 'tebi',
+                           'pebi', 'exbi', 'zebi', 'yobi')
+    }
+    n = int(n)
+    if n < 0:
+        raise ValueError("n < 0")
+    if symbols not in SYMBOLS.keys():
+        raise ValueError("symbols is invalid")
+    symbols = SYMBOLS[symbols]
+    prefix = {}
+    if symbols.startswith('customary'):
+        for i, s in enumerate(symbols[1:]):
+            prefix[s] = 1000 ** (i+1)
+    elif symbols.startswith('iec'):
+        for i, s in enumerate(symbols[1:]):
+            prefix[s] = 1024 ** (i+1)
+    else:
+        raise AssertionError("invalid symbols arg got past input validation")
+    for symbol in reversed(symbols[1:]):
+        if n >= prefix[symbol]:
+            value = float(n) / prefix[symbol]
+            return format % locals()
+    return format % dict(symbol=symbols[0], value=n)
+
+
+def human_to_bytes(s):
+    """
+    Attempts to guess the string format based on default symbols
+    set and return the corresponding bytes as an integer.
+    When unable to recognize the format ValueError is raised.
+
+      >>> human_to_bytes('0 B')
+      0
+      >>> human_to_bytes('1 K')
+      1024
+      >>> human_to_bytes('1 M')
+      1048576
+      >>> human_to_bytes('1 Gi')
+      1073741824
+      >>> human_to_bytes('1 tera')
+      1099511627776
+
+      >>> human_to_bytes('0.5kilo')
+      512
+      >>> human_to_bytes('0.1  byte')
+      0
+      >>> human_to_bytes('1 k')  # k is an alias for K
+      1024
+      >>> human_to_bytes('12 foo')
+      Traceback (most recent call last):
+          ...
+      ValueError: can't interpret '12 foo'
+
+    Bytes-to-human / human-to-bytes converter.
+    Based on: http://goo.gl/kTQMs
+    Working with Python 2.x and 3.x.
+
+    Author: Giampaolo Rodola' <g.rodola [AT] gmail [DOT] com>
+    License: MIT
+
+    Args:
+        s: str. Human readable byte-type string to be converted
+            to an integer number of bytes.
+
+    Returns:
+        An integer number of bytes equivalent to the input string.
+
+    Raises:
+        ValueError: When the input string cannot be interpreted.
+        AssertionError: If an invalid SYMBOLS key was found internally.
+    """
+    SYMBOLS = {
+        'customary'     : ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'),
+        'customary_ext' : ('byte', 'kilo', 'mega', 'giga', 'tera', 'peta',
+                           'exa', 'zetta', 'iotta'),
+        'iec'           : ('Bi', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi',
+                           'Ei', 'Zi', 'Yi'),
+        'iec_ext'       : ('byte', 'kibi', 'mebi', 'gibi', 'tebi',
+                           'pebi', 'exbi', 'zebi', 'yobi')
+    }
+    init = s
+    num = ""
+    while s and s[0:1].isdigit() or s[0:1] == '.':
+        num += s[0]
+        s = s[1:]
+    num = float(num)
+    letter = s.strip()
+    for name, sset in SYMBOLS.items():
+        if letter in sset:
+            break
+    else:
+        if letter == 'k':
+            # treat 'k' as an alias for 'K' as per: http://goo.gl/kTQMs
+            sset = SYMBOLS['customary']
+            letter = letter.upper()
+        else:
+            raise ValueError("can't interpret %r" % init)
+    prefix = {sset[0]:1}
+    if name.startswith('customary'):
+        for i, s in enumerate(sset[1:]):
+            prefix[s] = 1000 ** (i+1)
+    elif name.startswith('iec'):
+        for i, s in enumerate(sset[1:]):
+            prefix[s] = 1024 ** (i+1)
+    else:
+        raise AssertionError("unexpected key in SYMBOLS")
+    return int(num * prefix[letter])
+
+
+def invalid_arg_err_msg(post_validation=False, **kwargs):
+    """Construct error message for invalid argument.
+
+    Takes a named argument and constructs an error message for it
+    for the case that the passed value is invalid. Can target one
+    of two audiences: user and dev.
+
+    Examples
+    --------
+    >>> print(invalid_arg_err_msg(post_validation=FALSE, integer='abc'))
+    Invalid value "abc" for the "integer" argument.
+
+    >>> invalid_arg_err_msg(post_validation=TRUE, integer='abc')
+    Invalid value "abc" for the "integer" argument got past input validation.
+
+    Args:
+        post_validation: Boolean flag indicating if the message should
+            include " got past input validation" at the end.
+        **kwargs: Must be a single named argument. The name and value
+            will be substituted into the error message.
+
+    Returns:
+        A string containing the error message.
+
+    Raises:
+        ValueError: If **kwargs is not a single named argument.
+    """
+    import inspect
+    function_name = inspect.getframeinfo(inspect.currentframe()).function
+    if len(kwargs) != 1:
+        raise ValueError(f'{function_name} requires a single named argument.')
+    arg = list(kwargs.keys())[0]
+    val = kwargs[arg]
+    if post_validation:
+        end_of_msg = ' got past input validation'
+    else:
+        end_of_msg = ''
+    error_msg = (f'Invalid value "{val} for the "{arg}" '
+                 'argument{end_of_msg}.')
+    return error_msg
+
+
+def get_exception_string(exc):
+    """Convert an Exception object to a string.
+
+    Converts an Exception object to a string, equivalent to
+    the output when an uncaught Exception is raised during execution.
+
+    Args:
+        exc: Exception or subclass of Exception. The Exception to
+            be converted.
+
+    Returns:
+        A string identical to the output when the Exception is uncaught.
+    """
+    import traceback
+    tb_str = ''.join(traceback.format_exception(etype=type(exc),
+                                                value=exc,
+                                                tb=exc.__traceback__))
+    return tb_str
+
+
+def convert_seconds(seconds, days=False):
+    """Convert seconds to hours, minutes, and seconds.
+
+    Args:
+        seconds: integer. Number of seconds to be converted.
+        days: boolean. If True, a 4-member tuple is returned
             with days.
 
     Returns:
-        Tuple of 3 integers. Seconds converted to
+        A tuple of 3 integers. Seconds converted to
         hours, minutes, seconds. If days=True, then days is
         included and a 4 member tuple is returned.
-
-    Raises: None
     """
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     if days:
         d, h = divmod(h, 24)
-        return(d, h, m, s)
+        return d, h, m, s
     else:
-        return (h, m, s)
+        return h, m, s
+
 
 ################################################################################
 #                                     Math                                     #
 ################################################################################
 
 def round_up(number, nearest):
-    """Rounds a number up to an integer.
+    """Round a number up to an integer.
 
     Args:
-        number: Float. The value to be rounded up.
+        number: float. The value to be rounded up.
         nearest: Integer. The precision to round up to.
             e.g. 10, 100, 1000
 
     Returns:
         The number rounded up to the nearest integer
         with precision "nearest".
-
-    Raises: None
     """
     import math
     if number == 0:
         return nearest
-    return(int(math.ceil(number / nearest) * nearest))
+    return int(math.ceil(number / nearest) * nearest)
+
 
 def round_down(number, nearest):
-    """Rounds a number down to an integer.
+    """Round a number down to an integer.
 
     Args:
         number: Float. The value to be rounded down.
@@ -400,13 +683,12 @@ def round_down(number, nearest):
     Returns:
         The number rounded down to the nearest integer
         with precision "nearest".
-
-    Raises: None
     """
     import math
     if number == 0:
         return nearest
-    return(int(math.floor(number / nearest) * nearest))
+    return int(math.floor(number / nearest) * nearest)
+
 
 def transpose_expr_matrix(filename, outfile=None, **kwargs):
     """Transpose expression matrix text file.
@@ -423,11 +705,11 @@ def transpose_expr_matrix(filename, outfile=None, **kwargs):
             Suggested args include sep, header, and index_col.
 
     Returns:
-        Writes a tab-separated-value file containing the transposed matrix
-        to disk at the outfile location.
+        None. Writes a tab-separated-value file containing the transposed
+        matrix to disk at the outfile location.
     """
     import pandas as pd
-    
+
     data = pd.read_csv(filename, **kwargs)
     data = data.transpose()
     if outfile == None:
@@ -438,8 +720,10 @@ def transpose_expr_matrix(filename, outfile=None, **kwargs):
             filename[-2] += '_TRANSPOSED'
             outfile = '.'.join(filename[:-1].append(filename[-1]))
     data.to_csv(path_or_buf=outfile, sep='\t')
+    return
 
-def pairwise_dist(pts, full = False):
+
+def pairwise_dist(pts, full=False):
     """Calculate pairwise distances from vector array.
 
     Takes a n x d numpy array of vectors, where n is the
@@ -464,14 +748,54 @@ def pairwise_dist(pts, full = False):
             distances for the vectors in pts.
     """
     import numpy as np
-    
+
     res = np.zeros((pts.shape[0], pts.shape[0]))
     for i in range(pts.shape[0]):
-        res[i, i + 1:] = np.sqrt(np.sum(((pts[i + 1:, ] - pts[i, ]) ** 2), axis = 1))
+        res[i, i + 1:] = np.sqrt(np.sum(((pts[i + 1:, ] - pts[i, ]) ** 2),
+                                        axis = 1))
     if not full:
         return res
     else:
         return res.T + res
+
+
+def compare_sparse(mat1, mat2, verbose=False):
+    """Compare two scipy.sparse matrices for equivalency.
+
+    Compare two scipy.sparse matrices for equivalency,
+    short-circuits if they have different shapes or nnz,
+    before comparing directly.
+
+    Args:
+        mat1: scipy.sparse matrix. First matrix to be compared.
+        mat1: scipy.sparse matrix. Second matrix to be compared.
+        verbose: bool. If True, will print a description of
+            the results in addition to returning the result.
+
+    Returns:
+        bool indicating if the two matrices are equivalent or not.
+
+    Raises:
+        ValueError: if the two matrices are not scipy.sparse matrices.
+    """
+    import scipy.sparse
+    if not (isinstance(mat1, scipy.sparse.spmatrix)
+            or isinstance(mat2, scipy.sparse.spmatrix)):
+        raise ValueError('Both mat1 and mat2 must be scipy sparse matrices.')
+    if mat1.shape != mat2.shape:
+        if verbose:
+            print('mat1 and mat2 do not have the same shape.')
+        return False
+    elif mat1.nnz != mat2.nnz:
+        if verbose:
+            print('mat1 and mat2 do not have the same '
+                  'number of non-zero entries.')
+        return False
+    else:
+        if verbose:
+            print('mat1 and mat2 have the same shape and number '
+                  'of non-zero entries, but are not equivalent.')
+        return (mat1 != mat2).nnz == 0
 
 ################################################################################
 #                                   Plotting                                   #
@@ -479,49 +803,48 @@ def pairwise_dist(pts, full = False):
 
 def year_to_mdate(year):
     """Convert years to matplotlib dates.
-    
+
     Convert years (e.g. 2002) to matplotlib dates. Matplotlib's
     support for plotting datetime objects is generally horrible
     and so this is a useful function for manually plotting them.
-    
+
     Args:
         year: Integer, String, or iterable of either. All
             arguments must be a 4-digit year. This means
             that years before 1000 cannot be passed as an
             integer.
-    
+
     Returns:
         Either a single float or a numpy array of floats,
         depending on the dimensions of the input. The floats
         are the matplotlib date versions of the years
         given as arguments.
-        
-    Raises: None
     """
     import numpy as np
     import matplotlib.dates as mdates
-    
+
     if type(year) is str:
         year = int(year)
         year = f'{year}-01-01'
-        return(mdates.datestr2num(year))
+        return mdates.datestr2num(year)
     elif type(year) is int:
         year = f'{year}-01-01'
-        return(mdates.datestr2num(year))
+        return mdates.datestr2num(year)
     else:
         year = list(year)
         year = np.array(list(map(lambda x: f'{x}-01-01', year)))
         year = mdates.datestr2num(year)
-        return(year)
-    
+        return year
+
+
 def get_group_plot_data(df, groupby, value, convert_date=True):
     """Group a column by another column.
-    
+
     Given a pandas DataFrame, split the values of one column
     by the values of another, typically categorical, column.
     This is helpful for plotting with matplotlib methods,
     but not for seaborn.
-    
+
     Args:
         df: Pandas DataFrame. The source for the columns.
         groupby: The name of the column containing the categorical
@@ -534,7 +857,7 @@ def get_group_plot_data(df, groupby, value, convert_date=True):
             dtype, the returned values will be floats resulting
             from a conversion to matplotlib dates. If False, they
             will be left as numpy.datetime64 objects.
-            
+
     Returns:
         A 2-member tuple:
             1. A ragged array with N columns, where N is the number
@@ -544,13 +867,11 @@ def get_group_plot_data(df, groupby, value, convert_date=True):
                groupby.
             2. A list of Strings, containing the names of the
                N columns in the returned ragged array.
-    
-    Raises: None
     """
     import numpy as np
     import pandas as pd
     import matplotlib.dates as mdates
-    
+
     df = df.pivot(columns=groupby, values=value)
     vectors = []
     names = []
@@ -560,7 +881,8 @@ def get_group_plot_data(df, groupby, value, convert_date=True):
         else:
             vectors.append(np.array(df[col].dropna()))
         names.append(col)
-    return((vectors, names))
+    return (vectors, names)
+
 
 ################################################################################
 #                                  CLI Output                                  #
@@ -575,22 +897,17 @@ def propeller(duration, frequency):
     The characters it displays in sequence are:
     |
     /
-    —
     \
     |
     /
-    —
     \
 
     Args:
         duration: Float. Number of seconds the propeller will spin.
         frequency: Float. Number of full rotations per second.
-
-    Returns: None
-    Raises: None
     """
     import time
-    
+
     step_duration = 1 / (8 * frequency)
     chars = ['|', '/', '—', '\\', '|', '/', '—', '\\']
     counter = 0
@@ -600,9 +917,9 @@ def propeller(duration, frequency):
         counter = (counter + 1) % 8
         time.sleep(step_duration)
     print('\rDone!')
-    
-def pretty_str_list(list, width = 50, indent = '',
-                    sep = ', ', one_per_line = False): 
+
+
+def pretty_str_list(list, width=50, indent='', sep=', ', one_per_line=False):
     """Creates pretty string of a list.
 
     Creates a pretty string of the items in a list within
@@ -612,10 +929,10 @@ def pretty_str_list(list, width = 50, indent = '',
     printing lists for display, rather than for examination.
     Will produce unexpected behavior if the string version
     of a list element contains a new line character.
-    
+
     For example:
         >>> test = ['apple', 'banana', 'cherry', 'date',
-                   'elderberry', 'fig', 'grapefruit'] 
+                   'elderberry', 'fig', 'grapefruit']
         >>> test
         ['apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grapefruit']
         >>> print(pprint.pformat(test, width = 30, indent = 4))
@@ -644,14 +961,12 @@ def pretty_str_list(list, width = 50, indent = '',
         one_per_line: Boolean. If True, all elements will be printed
             on their own lines, without commas, regardless of
             element length.
-        
+
     Returns:
         A single string containing appropriate new lines and indents
         that can be printed. Contains a pretty string version of the
         list.
-
-    Raises: None
-    """    
+    """
     import string
     # Building a string in a loop via concatenation is bad practice.
     # Any operations that add to the end of the pretty string are
@@ -661,11 +976,11 @@ def pretty_str_list(list, width = 50, indent = '',
     # item, such as adding the ", " are left as string concatenations
     # for clarity, since they do not involve the main pretty string.
 
-    line_counter = 0 
-    line_width = 0 
+    line_counter = 0
+    line_width = 0
     str_out = []
     str_out.append(indent)
-    width -= len(indent) 
+    width -= len(indent)
     # sep_end is all trailing whitespace in sep
     # sep_beg is everything before that
     sep_beg = ''
@@ -680,9 +995,9 @@ def pretty_str_list(list, width = 50, indent = '',
             else:
                 sep_end = sep[i + 1:]
             break
-    for idx, item in enumerate(list): 
-        item = str(item) 
-        if idx < len(list) - 1 and (not one_per_line): 
+    for idx, item in enumerate(list):
+        item = str(item)
+        if idx < len(list) - 1 and (not one_per_line):
             item += sep_beg
         if one_per_line:
             str_out.append(item)
@@ -690,14 +1005,14 @@ def pretty_str_list(list, width = 50, indent = '',
                 str_out.append('\n' + indent)
             continue
         # Only runs if one_per_line is False
-        if len(item) >= width: 
-            if line_counter != 0: 
-                str_out.append('\n' + indent) 
+        if len(item) >= width:
+            if line_counter != 0:
+                str_out.append('\n' + indent)
             str_out.append(item)
             str_out.append('\n' + indent)
-            line_counter += 2 
-            line_width = 0 
-        else: 
+            line_counter += 2
+            line_width = 0
+        else:
             if line_width == 0:
                 # Because of above if statement, I know that the
                 # len(item) is currently < width
@@ -716,7 +1031,8 @@ def pretty_str_list(list, width = 50, indent = '',
                 str_out.append(item)
                 line_width += len(item)
     str_out = ''.join(str_out)
-    return(str_out)
+    return str_out
+
 
 def pretty_str_text(text, width=80, indent=''):
     """Returns pretty string of string.
@@ -726,25 +1042,24 @@ def pretty_str_text(text, width=80, indent=''):
     of pretty_str_list().
 
     Args:
-        text: String. The string to be converted to a
+        text: string. The string to be converted to a
             pretty printable string.
-        width: Integer. The maximum character width of
+        width: integer. The maximum character width of
             the pretty string.
-        indent: String. A string to prepend to every line
+        indent: string. A string to prepend to every line
             of the pretty string.
-    
+
     Returns:
         A printable version of the text string. It conforms
         to the width restriction and adds the indent to the
         beginning of each line.
-
-    Raises: None
     """
     pretty_str = pretty_str_list(text.split(' '), width=width, indent=indent,
                                  sep=' ', one_per_line=False)
-    return(pretty_str)
+    return pretty_str
 
-def get_ruler(m, n=None, ticks=True, indent=''):
+
+def get_ruler(m, n=None, ticks=True, indent='', ticks_above=True):
     """Get a width ruler for the command line.
 
     Get a string that, when printed on the command line, provides
@@ -755,7 +1070,7 @@ def get_ruler(m, n=None, ticks=True, indent=''):
     or like this:
                 10
         123456789012
-    
+
     Args:
         m: Integer. If only m is passed, a ruler starting at 1 and
             ending at m is provided.
@@ -766,11 +1081,14 @@ def get_ruler(m, n=None, ticks=True, indent=''):
             line contains the minor ticks, like normal.
         indent: String. This string will be prepended to all lines
             of the ruler.
-    
+        ticks_above: Boolean. If True and ticks is True, the major ticks
+            will be place above the minor ticks. If False, the two
+            lines will be switched.
+
     Returns:
         A string suitable for printing to the command line to
         produce a ruler with the desired dimensions.
-    
+
     Raises:
         AssertionError: If the ruler is not an increasing range.
     """
@@ -888,12 +1206,16 @@ def get_ruler(m, n=None, ticks=True, indent=''):
         minor_ticks.append((str(i)[-1]))
     minor_ticks = ''.join(minor_ticks)
     if ticks:
-        ruler = indent + major_ticks + '\n' + indent + minor_ticks
+        if ticks_above:
+            ruler = indent + major_ticks + '\n' + indent + minor_ticks
+        else:
+            ruler = indent + minor_ticks + '\n' + indent + major_ticks
     else:
         ruler = indent + minor_ticks
-    return(ruler)
+    return ruler
 
-def color_print(string, color):
+
+def color_print(string, color, file=sys.stdout):
     """Print a string with a certain color.
 
     Assumes that the color before and after this string should
@@ -909,11 +1231,11 @@ def color_print(string, color):
         string: String. The text to be printed.
         color: String. The color to print the text in.
             Case-insensitive. Spelling-sensitive.
+        file: IO object allowing output. Passed to
+            the file argument of print().
 
     Returns:
-        Doesn't actually return anything. Just prints to stdout.
-
-    Raises: None
+        None. Prints the colored string to file.
     """
     color = color.lower()
     if color == 'white':
@@ -930,13 +1252,160 @@ def color_print(string, color):
         color == '\033[35m'
     else:
         colorprint('ERROR: Color not supported', 'red')
-    print(color + string + '\033[0m')
+    print(color + string + '\033[0m', file=file)
+
+
+def print_timedelta(timedelta, short=False):
+    """Convert a datetime.timedelta object to a pretty string.
+
+    Convert a datetime.timedelta or an integer number
+    of seconds to a human readable string in the format:
+        0 days, 0 hours, 0 minutes, 0 seconds
+    If short is True, the returned string will be in
+    short format:
+        00:00:00:00
+    Leading zero units are stripped. For example:
+        2 hours, 0 minutes, 10 seconds
+          or
+        02:00:10
+
+    Adapted from
+        https://gist.github.com/thatalextaylor/7408395
+    on 2020-09-09.
+
+    Args:
+        timedelta: Either a datetime.timedelta object or
+            a number of seconds that can be converted to
+            an integer. The time interval to be converted
+            to a string.
+
+    Returns:
+        String. The human readable version of timedelta
+        in the format listed above.
+    """
+    import datetime
+    if type(timedelta) is datetime.timedelta:
+        seconds = timedelta.total_seconds()
+    else:
+        seconds = timedelta
+    if seconds < 0:
+        sign_string = '-'
+    else:
+        sign_string = ''
+    seconds = abs(int(seconds))
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    unit = {}
+    if short:
+        unit['d'] = ':'
+        unit['h'] = ':'
+        unit['m'] = ':'
+        unit['s'] = ''
+    else:
+        unit['d'] = ' day, ' if days == 1 else ' days, '
+        unit['h'] = ' hour, ' if hours == 1 else ' hours, '
+        unit['m'] = ' minute, ' if minutes == 1 else ' minutes, '
+        unit['s'] = ' second' if seconds == 1 else ' seconds'
+    if short:
+        if days > 0:
+            return f'{sign_string}'
+                   f'{days:02d}{unit["d"]}'
+                   f'{hours:02d}{unit["h"]}'
+                   f'{minutes:02d}{unit["m"]}'
+                   f'{seconds:02d}{unit["s"]}'
+        elif hours > 0:
+            return f'{sign_string}'
+                   f'{hours:02d}{unit["h"]}'
+                   f'{minutes:02d}{unit["m"]}'
+                   f'{seconds:02d}{unit["s"]}'
+        elif minutes > 0:
+            return f'{sign_string}'
+                   f'{minutes:02d}{unit["m"]}'
+                   f'{seconds:02d}{unit["s"]}'
+        else:
+            return f'{sign_string}'
+                   f'{seconds}{unit["s"]}'
+    else:
+        if days > 0:
+            return f'{sign_string}'
+                   f'{days}{unit["d"]}'
+                   f'{hours}{unit["h"]}'
+                   f'{minutes}{unit["m"]}'
+                   f'{seconds}{unit["s"]}'
+        elif hours > 0:
+            return f'{sign_string}'
+                   f'{hours}{unit["h"]}'
+                   f'{minutes}{unit["m"]}'
+                   f'{seconds}{unit["s"]}'
+        elif minutes > 0:
+            return f'{sign_string}'
+                   f'{minutes}{unit["m"]}'
+                   f'{seconds}{unit["s"]}'
+        else:
+            return f'{sign_string}'
+                   f'{seconds}{unit["s"]}'
+
+
+def print_h5_tree(h5_item, show_dtypes=False, prefix='', file=sys.stdout):
+    """Pretty print a tree view of an HDF5 file.
+
+    Prints a tree view of an HDF5 file, showing the
+    hierarchy of groups and datasets.
+
+    Args:
+        h5_item: h5py.File - open. The HDF5 file to be printed.
+        show_dtypes: bool. Whether or not the dtypes of the Datasets
+            should be printed.
+        prefix: str. The character string to prefix the tree. e.g.
+            '    ' to move the tree off the left gutter.
+        file: IO object allowing output. Tree will be printed to it.
+
+    Returns:
+        None. Prints the tree to the file argument.
+
+    Raises:
+        AssertionError: If the HDF5 file contains an object
+            that isn't an h5py.{File,Group,Dataset}.
+    """
+    vert = '\u2502'
+    horz = '\u2500'
+    corn = '\u2514'
+    fork = '\u251c'
+    if str(type(h5_item)).endswith('File\'>'):
+        print(prefix, end='', file=file)
+    print(h5_item.name.split('/')[-1]
+            if not h5_item.name == '/' else h5_item.filename, end='', file=file)
+    if str(type(h5_item)).endswith('Dataset\'>'):
+        # Base Case
+        if show_dtypes:
+            print(f' <{str(h5_item.dtype)}>', file=file)
+        else:
+            print('', file=file)
+        return
+    elif not (str(type(h5_item)).endswith('Group\'>') or
+              str(type(h5_item)).endswith('File\'>')):
+        raise AssertionError(f'h5py object "{h5_item.name}" is not a '
+                             'File, Group, or Dataset and is not supported. '
+                             f'type is "{type(h5_item)}".')
+    else:
+        print('', file=file)
+    # Recursive Case
+    total = len(h5_item)
+    for i, k in enumerate(h5_item.keys()):
+        if i < total - 1:
+            print(f'{prefix}{fork}{horz} ', end='', file=file)
+            print_h5_tree(h5_item[k], show_dtypes, prefix + f'{vert}  ', file)
+        else:
+            print(f'{prefix}{corn}{horz} ', end='', file=file)
+            print_h5_tree(h5_item[k], show_dtypes, prefix + '   ', file)
+
 
 ################################################################################
 #                                  CLI Input                                   #
 ################################################################################
 
-def get_int(prompt, nonnegative = False):
+def get_int(prompt, nonnegative=False):
     """Reads an integer input with error checking.
 
     Args:
@@ -946,8 +1415,6 @@ def get_int(prompt, nonnegative = False):
 
     Returns:
         An integer from the user.
-
-    Raises: None
     """
     repeat = True
     while repeat:
@@ -963,9 +1430,10 @@ def get_int(prompt, nonnegative = False):
             print('ERROR: Please enter an integer >= 0!')
             repeat = True
             continue
-    return(value)
+    return value
 
-def get_float(prompt, nonnegative = False):
+
+def get_float(prompt, nonnegative=False):
     """Reads an float input with error checking.
 
     Args:
@@ -975,8 +1443,6 @@ def get_float(prompt, nonnegative = False):
 
     Returns:
         A float from the user.
-
-    Raises: None
     """
     repeat = True
     while repeat:
@@ -994,6 +1460,7 @@ def get_float(prompt, nonnegative = False):
             continue
     return value
 
+
 def get_yes_or_no(input_string):
     """Get a yes or no response from the user.
 
@@ -1005,12 +1472,10 @@ def get_yes_or_no(input_string):
     Code: INPUT_FROM_USER[0].lower()
 
     Args:
-        input_string: String. Prompt fed to input()
-    
-    Returns:
-        Boolean. True if answer was yes. False if no.
+        input_string: string. Prompt fed to input()
 
-    Raises: None
+    Returns:
+        bool. True if answer was yes. False if no.
     """
     yn_loop = True
     while yn_loop:
@@ -1024,14 +1489,15 @@ def get_yes_or_no(input_string):
         user_input = user_input[0].lower()
         if user_input == 'y':
             yn_loop = False
-            return(True)
+            return True
         elif user_input == 'n':
             yn_loop = False
-            return(False)
+            return False
         else:
             print('ERROR: Please enter yes or no!')
             continue
-            
+
+
 def get_command(options, prompt, first_letter=False,
                 case_sensitive=True, error_message=None,
                 empty_str_error_msg=None):
@@ -1061,7 +1527,7 @@ def get_command(options, prompt, first_letter=False,
             as the error message for invalid empty string input.
             If None, the following will be used:
                 'ERROR: Empty string is not a valid option!'
-        
+
     Returns:
         A single string matching one of the options passed in
         options, even if a first_letter abbreviation was
@@ -1104,7 +1570,7 @@ def get_command(options, prompt, first_letter=False,
         # Take care of empty string case to simplify later code
         if user_input == '':
             if empty_string:
-                return('')
+                return ''
             else:
                 print(empty_str_error_msg)
                 continue
@@ -1115,24 +1581,26 @@ def get_command(options, prompt, first_letter=False,
             for opt in options:
                 opt_lower = opt.lower()
                 if user_input_lower == opt_lower:
-                    return(opt)
+                    return opt
                 elif first_letter and len(user_input) == 1:
                     if user_input_lower == opt_lower[0]:
-                        return(opt)
+                        return opt
             print(error_message)
             continue
         elif first_letter and len(user_input) == 1:
             for opt in options:
                 if user_input == opt[0]:
-                    return(opt)
+                    return opt
             print(error_message)
             continue
         else:
             print(error_message)
             continue
 
+
 def main():
     pass
+
 
 if __name__ == '__main__':
     main()
