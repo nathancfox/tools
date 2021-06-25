@@ -891,7 +891,7 @@ def convert_dict_to_dataframe(dict_of_dicts):
     return new_df
 
 
-def mult_value_counts(df, cols=[], printed=True):
+def mult_value_counts(df, cols=[], printed=True, **kwargs):
     """Print the value_counts output for given columns in a DataFrame.
 
     pandas.DataFrame.value_counts() gives the counts for all combinations
@@ -903,6 +903,7 @@ def mult_value_counts(df, cols=[], printed=True):
         cols: list. The columns to be printed. Empty list defaults to all.
         printed: bool. If True, output will be printed. Otherwise, returned
             as a string.
+        **kwargs: Passed to the pandas.Series.value_counts() method.
 
     Returns:
         None if printed; the output string otherwise.
@@ -914,7 +915,7 @@ def mult_value_counts(df, cols=[], printed=True):
         vc = df[col].value_counts()
         if vc.shape[0] == 0:
             continue
-        output = str(df[col].value_counts()).splitlines()
+        output = str(df[col].value_counts(**kwargs)).splitlines()
         metadata_line = output[-1]
         output = '  ' + '\n  '.join(output[:-1])
         metadata = {}
