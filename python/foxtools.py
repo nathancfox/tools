@@ -64,7 +64,7 @@ import sys
 #                                   General                                    #
 ################################################################################
 
-def smart_dir(obj):
+def smart_dir(obj, output=['p']):
     """Sorts dir() output intelligently.
 
     dir(obj) returns a list of attributes for an object. However, it
@@ -95,11 +95,50 @@ def smart_dir(obj):
 
     Args:
         obj: Any python object.
+        output: list-like. Contains which of the 6 categories
+            to display. Agnostic to case and underscore/dash/
+            whitespace. Acceptable outputs are:
+            ['reserved methods', 'rm', 'reserved other', 'ro',
+             'internal methods', 'im', 'internal other', 'io',
+             'public methods', 'pm', 'public other', 'po',
+             'reserved', 'r', 'internal', 'i', 'public', 'p',
+             'methods', 'm', 'other', 'o', 'all', 'a']
 
     Returns:
         Nothing is returned, however the sorted output
         is printed to the standard out.
     """
+    categs = {'rm': False, 'ro': False, 'im': False,
+              'io': False, 'pm': False, 'po': False}
+    flags = set()
+    if type(output) == str:
+        output = [output]
+    try:
+        output = list(map(str, output))
+    except:
+        print('output must be a list-like of strings.')
+        return
+    for cat in output:
+        cat = cat.replace('_', ' ').replace('-', ' ').lower().split()
+        cat = ''.join([word[0] for word in cat])
+        if cat == 'a':
+            flags.update(['rm', 'ro', 'im', 'io', 'pm', 'p'])
+        elif cat == 'r':
+            flags.update(['rm', 'ro'])
+        elif cat == 'i':
+            flags.update(['im', 'io'])
+        elif cat == 'p':
+            flags.update(['pm', 'po'])
+        elif cat == 'm':
+            flags.update(['rm', 'im', 'pm'])
+        elif cat == 'o':
+            flags.update(['ro', 'io', 'po'])
+        elif cat in categs:
+            flags.update([cat])
+        else:
+            print(f'"{cat}" is not a valid option for output.')
+            return
+    categs = {k: True if k in flags else False for k in categs}
     python_reserved_methods = []
     python_reserved_other = []
     internal_methods = []
@@ -138,38 +177,38 @@ def smart_dir(obj):
     print(f'  Type: {obj_type}')
     print('------' + ('-' * (len(obj_type) + 4)))
     print()
-    if len(python_reserved_methods) != 0:
+    if len(python_reserved_methods) != 0 and categs['rm']:
         print('Python Reserved Methods')
         print('=======================')
         for a, a_type in python_reserved_methods:
             print(f'  {a:{max_name_width}s} : {a_type}')
         print()
-    if len(python_reserved_other) != 0:
-        print('Python Reserved Non-Methods')
+    if len(python_reserved_other) != 0 and categs['ro']:
+        print('Python Reserved Other')
         print('===========================')
         for a, a_type in python_reserved_other:
             print(f'  {a:{max_name_width}s} : {a_type}')
         print()
-    if len(internal_methods) != 0:
+    if len(internal_methods) != 0 and categs['im']:
         print('Internal Methods')
         print('================')
         for a, a_type in internal_methods:
             print(f'  {a:{max_name_width}s} : {a_type}')
         print()
-    if len(internal_other) != 0:
-        print('Internal Non-Methods')
+    if len(internal_other) != 0 and categs['io']:
+        print('Internal Other')
         print('====================')
         for a, a_type in internal_other:
             print(f'  {a:{max_name_width}s} : {a_type}')
         print()
-    if len(public_methods) != 0:
+    if len(public_methods) != 0 and categs['pm']:
         print('Public Methods')
         print('==============')
         for a, a_type in public_methods:
             print(f'  {a:{max_name_width}s} : {a_type}')
         print()
-    if len(public_other) != 0:
-        print('Public Non-Methods')
+    if len(public_other) != 0 and categs['po']:
+        print('Public Other')
         print('==================')
         for a, a_type in public_other:
             print(f'  {a:{max_name_width}s} : {a_type}')
@@ -1251,7 +1290,7 @@ def color_print(string, color, file=sys.stdout):
     elif color == 'purple':
         color == '\033[35m'
     else:
-        colorprint('ERROR: Color not supported', 'red')
+        color_print('ERROR: Color not supported', 'red')
     print(color + string + '\033[0m', file=file)
 
 
