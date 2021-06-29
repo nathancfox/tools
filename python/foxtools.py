@@ -20,6 +20,7 @@ General
   invalid_arg_err_msg
   get_exception_string
   convert_seconds
+  setup_loggers
 
 Math
 ----
@@ -640,6 +641,168 @@ def convert_seconds(seconds, days=False):
         return d, h, m, s
     else:
         return h, m, s
+
+
+def setup_loggers(global_level=10, logfile='',
+                  splitouterr=False, reset=[]):
+    """Set up standard and clean loggers.
+
+    I don't know what will happen if you call this from an external
+    library (foxtools) from a different module. Mostly intended
+    for copy and paste.
+
+    Args:
+        global_level: int. Constant from logging indicating the maximum
+            level of logging for both loggers.
+            Defined as:
+                CRITICAL: 50
+                ERROR   : 40
+                WARNING : 30
+                INFO    : 20
+                DEBUG   : 10
+                NOTSET  : 0
+        logfile: str. Path to the file used for logging. If empty string,
+            will default to the __file__ of this script, with any
+            extension replace with '.log'. If logfile is an existing
+            directory, It will default to the same as an empty string,
+            but placed in that directory.
+        splitouterr: bool. If true, the typical *.log file will instead
+            be split into *.out and *.err. The former will contain
+            INFO and DEBUG messages. The latter will contain CRITICAL,
+            ERROR, and WARNING messages.
+        reset: list of str. The names of the loggers to be reset before
+            configuration. Empty list indicates all loggers. None
+            indicates no loggers.
+
+    Raises:
+    """
+    import logging
+    import os
+
+    # Functions and Classes
+    def reset_logging(loggers=[]):
+        """Reset loggers of given names, completely.
+
+        Stolen from somewhere online.
+        """
+        manager = logging.Logger.manager
+        manager.disabled = logging.NOTSET
+        if type(loggers) is str:
+            loggers = [loggers]
+        if len(loggers) == 0:
+            lkeys = list(manager.loggerDict.keys())
+        else:
+            lkeys = []
+            for lkey in loggers:
+                if lkey not in manager.loggerDict.keys():
+                    print(f'{lkey} is not a valid logger. Will not be reset.',
+                          file=sys.stderr)
+                else:
+                    lkeys.append(lkey)
+        for lkey in lkeys:
+            logger = manager.loggerDict[lkey]
+            if isinstance(logger, logging.Logger):
+                logger.setLevel(logging.NOTSET)
+                logger.propagate = True
+                logger.disabled = False
+                logger.filters.clear()
+                handlers = logger.handlers.copy()
+                for handler in handlers:
+                    # Copied from `logging.shutdown`.
+                    try:
+                        handler.acquire()
+                        handler.flush()
+                        handler.close()
+                    except (OSError, ValueError):
+                        pass
+                    finally:
+                        handler.release()
+                    logger.removeHandler(handler)
+
+    class Out_Filter(logging.Filter):
+        """Filter for logging messages of INFO and DEBUG."""
+        def filter(self, rec):
+            if rec.levelno <= logging.INFO:
+                return(True)
+            else:
+                return(False)
+
+    class Err_Filter(logging.Filter):
+        """Filter for logging messages of CRITICAL, ERROR, and WARNING."""
+        def filter(self, rec):
+            if rec.levelno >= logging.WARNING:
+                return(True)
+            else:
+                return(False)
+
+    if reset is not None:
+        reset_logging(loggers=reset)
+    # Formatters
+    std_format = logging.Formatter(fmt=('%(asctime)s [%(levelname)s] '
+                                        '%(message)s'),
+                                   datefmt='%Y-%m-%d %H:%M:%S')
+    clean_format = logging.Formatter(fmt='')
+
+    # Parse logfile
+    if logfile == '':
+        logfile = os.path.basename(__file__).splitext()[0] + '.log'
+    elif os.path.isdir(logfile):
+        logdir = logfile
+        logfile = os.path.basename(__file__).splitext()[0] + '.log'
+        logfile = os.path.join(logdir, logfile)
+    else:
+        # No effect, here for readability
+        logfile = logfile
+
+    # Build Handlers
+    std_handlers = {}
+    clean_handlers = {}
+    if splitouterr:
+        logfile_name = os.path.splitext(os.path.basename(logfile))[0]
+        logout_file = os.path.join(os.path.dirname(logfile),
+                                   f'{logfile_name}.out')
+        logerr_file = os.path.join(os.path.dirname(logfile),
+                                   f'{logfile_name}.err')
+
+        std_handlers['logout'] = logging.FileHandler(filename=logout_file,
+                                                     mode='a')
+        std_handlers['logerr'] = logging.FileHandler(filename=logerr_file,
+                                                     mode='a')
+        std_handlers['logout'].addFilter(Out_Filter())
+        std_handlers['logerr'].addFilter(Err_Filter())
+
+        clean_handlers['logout'] = logging.FileHandler(filename=logout_file,
+                                                       mode='a')
+        clean_handlers['logerr'] = logging.FileHandler(filename=logerr_file,
+                                                       mode='a')
+        clean_handlers['logout'].addFilter(Out_Filter())
+        clean_handlers['logerr'].addFilter(Err_Filter())
+    else:
+        std_handlers['logfile'] = logging.FileHandler(filename=logfile,
+                                                      mode='a')
+        clean_handlers['logfile'] = logging.FileHandler(filename=logfile,
+                                                        mode='a')
+    for hdler in std_handlers:
+        std_handlers[hdler].setFormatter(std_format)
+    for hdler in clean_handlers:
+        clean_handlers[hdler].setFormatter(clean_format)
+
+    # Building loggers
+    logger = logging.getLogger('standard')
+    if splitouterr:
+        logger.addHandler(std_handlers['logout'])
+        logger.addHandler(std_handlers['logerr'])
+    else:
+        logger.addHandler(std_handlers['logfile'])
+    logger.setLevel(global_level)
+
+    logger = logging.getLogger('clean')
+    if splitouterr:
+        logger.addHandler(clean_handlers['logout'])
+        logger.addHandler(clean_handlers['logerr'])
+    else:
+        logger.addHandler(clean_handlers['logfile'])
+    logger.setLevel(global_level)
 
 
 ################################################################################
