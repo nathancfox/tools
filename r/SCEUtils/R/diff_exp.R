@@ -86,20 +86,20 @@ calc_cluster_de_1v1 <- function(sce_obj, clust_ids, fc_thresh=0.5, p_thresh=1E-4
 #' @export
 calc_cluster_de_vs_all_cells <- function(sce_obj, clust_ids, fc_thresh=0.5,
                                          p_thresh=1E-4, method=c("mw", "ttest"),
-                                         missing_clusts = FALSE, depth = NULL,
+                                         numeric_clusts = FALSE, depth = NULL,
                                          log_mean_exp = FALSE) {
     # I ADDED >>>
     if (is.character(clust_ids) && length(clust_ids == 1) &&
             clust_ids %in% colnames(SingleCellExperiment::colData(sce_obj))) {
         clust_ids <- sce_obj[[clust_ids]]
     }
-    if (missing_clusts) {
-        l <- length(levels(clust_ids))
-        clusts <- sort(as.numeric(levels(clust_ids)))
+    clusts <- unique(as.character(clust_ids))
+    l <- length(clusts)
+    if (numeric_clusts) {
+        clusts <- sort(as.numeric(clusts))
     } else {
-        l <- length(unique(clust_ids))
         # clusts <- sort(as.numeric(unique(clust_ids)))
-        clusts <- sort(unique(clust_ids))
+        clusts <- sort(clusts)
     }
     if (! is.null(depth)) {
         if (! (depth %in% colnames(SingleCellExperiment::colData(sce_obj)))) {
@@ -252,7 +252,7 @@ write_de_full <- function(pct_list, roc_list, de_res,
         f.a = !is.na(m)
         f.b = m[f.a]
         for (i in 1:dim(roc_list[[j]])[2]) {
-            clust_exp <- log2(de_res[[j]]$clust_exp[, i] + 1)
+            clust_exp <- de_res[[j]]$clust_exp[, i]
             log_fc <- log2(de_res[[j]]$clust_exp[, i] + 1) - log2(base::rowMeans(de_res[[j]]$clust_exp[, -i], na.rm = TRUE) + 1)
             de_pval <- de_res[[j]]$pval[, i]
             de_roc <- roc_list[[j]][, i]
@@ -292,7 +292,7 @@ write_de_full <- function(pct_list, roc_list, de_res,
 write_de <- function(de_list, path_prefix = "", missing_clusters = FALSE) {
     for (j in 1:length(de_list)) {
         for (i in 1:dim(de_list[[j]][[1]])[2]) {
-            clust_exp <- log2(de_list[[j]]$clust_exp[, i] + 1)
+            clust_exp <- de_list[[j]]$clust_exp[, i]
             log_fc <- de_list[[j]]$logfc[, i]
             de_pval <- de_list[[j]]$pval[, i]
             de_temp <- data.frame(mean_exp=clust_exp,
