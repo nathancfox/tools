@@ -1,0 +1,11 @@
+[build-system]
+requires = [
+    "datetime",
+    "logging",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "scipy",
+    "uuid"
+]
+build-backend = "setuptools.build_meta"
