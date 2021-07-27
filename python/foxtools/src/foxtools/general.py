@@ -736,3 +736,32 @@ def setup_loggers(global_level=10, logfile='',
     else:
         logger.addHandler(clean_handlers['logfile'])
     logger.setLevel(global_level)
+
+
+def ipyprompt(prompt=None):
+    """Set custom IPython prompt.
+
+    Add the current time as a prefix line to the IPython prompt.
+    """
+    from IPython.core.getipython import get_ipython
+    from IPython.terminal.prompts import Prompts, Token
+    from time import localtime, strftime
+
+    class MyPrompt(Prompts):
+        def in_prompt_tokens(self):
+            start_time = strftime('%H:%M:%S', localtime())
+            return [
+                (Token.PromptNum, f'{start_time}\n'),
+                (Token.Prompt, self.vi_mode()),
+                (Token.Prompt, 'In ['),
+                (Token.PromptNum, str(self.shell.execution_count)),
+                (Token.Prompt, ']: '),
+            ]
+
+    ip = get_ipython()
+    old_prompt = ip.prompts
+    if prompt is None:
+        ip.prompts = MyPrompt(ip)
+    else:
+        ip.prompts = prompt
+    return old_prompt
