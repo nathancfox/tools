@@ -765,3 +765,52 @@ def ipyprompt(prompt=None):
     else:
         ip.prompts = prompt
     return old_prompt
+
+
+def for_loop_progress(generator):
+    """Decorate for loops with progress updates.
+
+    A decorator to print timestamped %-completed updates
+    every 10%. This decorator is designed for generic for
+    loops that take a single iterable. To allow decoration,
+    the for loop must utilize enumerate(), be wrapped in
+    a generator, and yield i at each step. Because it is
+    wrapped in a generator, the for loop can only affect
+    variables by reference.
+
+    Example
+    -------
+    Filling a list with perfect squares.
+
+        Undecorated
+        -----------
+        >>> squares = []
+        >>> for root in range(1, 10):
+        ...    squares.append(root ** 2)
+
+        Decorated
+        ---------
+        >>> squares = []
+        >>> @for_loop_progress
+        >>> def generator(roots):
+        ...     for i, root in enumerate(roots):
+        ...         squares.append(root ** 2)
+        ...     yield i
+        >>> generator(range(1, 10))
+
+
+    """
+    from datetime import datetime as dt
+
+    def inner(input_list):
+        total = len(input_list)
+        progress = [0, 0]
+        print(f'{dt.now().strftime("%Y-%m-%d %H:%M:%S")} | Starting')
+        for i in generator(input_list):
+            progress[1] = int(i / total * 100)
+            if progress[1] % 10 == 0 and progress[1] > progress[0]:
+                print(f'{dt.now().strftime("%Y-%m-%d %H:%M:%S")} | '
+                      f'{progress[1]}%')
+                progress[0] = progress[1]
+        print(f'{dt.now().strftime("%Y-%m-%d %H:%M:%S")} | Finished')
+    return inner
