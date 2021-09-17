@@ -497,8 +497,10 @@ def print_h5_tree(h5_item, show_dtypes=False, prefix='', file=None):
     fork = '\u251c'
     if str(type(h5_item)).endswith('File\'>'):
         print(prefix, end='', file=file)
-    print(h5_item.name.split('/')[-1]
-            if not h5_item.name == '/' else h5_item.filename, end='', file=file)
+    if '/' in h5_item.name and len(h5_item.name) > 1:
+        print(h5_item.name.split('/')[-1], end='', file=file)
+    else:
+        print(h5_item.filename, end='', file=file)
     if str(type(h5_item)).endswith('Dataset\'>'):
         # Base Case
         if show_dtypes:
