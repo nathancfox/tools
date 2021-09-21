@@ -1,6 +1,6 @@
 from .general import *
 
-from . import command_line
-from . import math
-from . import plotting
-from . import tabular_data
+import foxtools.command_line
+import foxtools.math
+import foxtools.plotting
+import foxtools.tabular_data
