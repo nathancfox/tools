@@ -528,3 +528,57 @@ calc_cluster_depth_de_vs_all_cells <- function(sce_obj, clust_ids, fc_thresh=0.5
                 pval = pvals, logfc = logFC, summary = summary)
     return(res)
 }
+
+#' Fisher's method for combining p-values
+combine_p <- function(p, weight, na.rm = FALSE) {
+    na.ix <- is.na(p)
+    if (any(na.ix) && !na.rm) {
+        stop("missing values are present!")
+    }
+    if (all(na.ix)) {
+        return(NA)
+    }
+    p <- p[!na.ix]
+    k <- length(p)
+    if (k == 1) {
+        return(p)
+    }
+    if (missing(weight)) {
+        weight <- rep(1, k)
+    }
+    cp <- pchisq(-2 * sum(log(p)), df = 2 * k, lower.tail = FALSE)
+    return(cp)
+}
+                           
+#' Combine batch-specific DE results.
+#'
+#' Combine a de_list of clusters and batch-specific DE results into
+#' one table per cluster, including a column of p-values combined
+#' with Fisher's method.
+#'
+#' @param pval_col_pattern Pattern to pass to grep for selecting pvalue
+#'   columns to combine. Empty string will combine all columns.
+#' @export
+combine_de_results <- function (de_list, pval_col_pattern = "pval") {
+    combined <- list()
+    for (cluster in names(de_list)) {
+        df <- de_list[[cluster]][[1]]
+        colnames(df) <- paste(colnames(df), gsub("^batch_", "", names(de_list[[cluster]])[1]), sep = "_")
+        if (length(de_list[[cluster]]) > 1) {
+            for (b_idx in seq_along(de_list[[cluster]])) {
+                if (b_idx == 1) {
+                    next
+                }
+                batch <- names(de_list[[cluster]])[b_idx]
+                batch <- gsub("^batch_", "", batch)
+                new_df <- de_list[[cluster]][[b_idx]]
+                colnames(new_df) <- paste(colnames(new_df), batch, sep = "_")
+                df <- cbind(df, new_df)
+            }
+        }
+        combined[[cluster]] <- df
+        combined[[cluster]]$combined_pvals <- apply(combined[[cluster]][, grep("pval", colnames(combined[[cluster]]), value = TRUE)],
+                                                    1, function(x) {combine_p(x, na.rm = TRUE)})
+    }
+    return(combined)
+}
