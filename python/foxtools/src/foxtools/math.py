@@ -59,7 +59,7 @@ def transpose_expr_matrix(filename, outfile=None, **kwargs):
 
     data = pd.read_csv(filename, **kwargs)
     data = data.transpose()
-    if outfile == None:
+    if outfile is None:
         filename = filename.split('.')
         if len(filename) == 1:
             outfile = filename[0] + '_TRANSPOSED'
@@ -99,7 +99,7 @@ def pairwise_dist(pts, full=False):
     res = np.zeros((pts.shape[0], pts.shape[0]))
     for i in range(pts.shape[0]):
         res[i, i + 1:] = np.sqrt(np.sum(((pts[i + 1:, ] - pts[i, ]) ** 2),
-                                        axis = 1))
+                                        axis=1))
     if not full:
         return res
     else:
@@ -143,3 +143,23 @@ def compare_sparse(mat1, mat2, verbose=False):
             print('mat1 and mat2 have the same shape and number '
                   'of non-zero entries, but are not equivalent.')
         return (mat1 != mat2).nnz == 0
+
+
+def is_sym(a, **kwargs):
+    """Test if 2D array is symmetric.
+
+    Args:
+        a: object that can be coerced into a
+            numpy 2D array.
+        **kwargs: named arguments passed to numpy.allclose
+
+    Returns:
+        bool indicating if a is symmetric or not.
+    """
+    import numpy
+    a = numpy.array(a)
+    if len(a.shape) != 2:
+        raise ValueError('a must be a 2D array')
+    if a.shape[0] != a.shape[1]:
+        raise ValueError('a must be a square array')
+    return numpy.allclose(a, a.T, **kwargs)

@@ -173,9 +173,8 @@ def print_globals(printed=True, width=16):
         if print is not True. None otherwise.
     """
     import inspect
-    caller_globals = dict(inspect.getmembers(
-                              inspect.stack()[1][0])
-                     )["f_globals"]
+    caller_globals = dict(inspect.getmembers(inspect.stack()[1][0]))
+    caller_globals = caller_globals['f_globals']
     variables = [(g[0], type(g[1]))
                  for g in caller_globals.items() if not g[0].startswith('_')]
     if print:
@@ -377,13 +376,13 @@ def bytes_to_human(n, format='%(value).1f %(symbol)s', symbols='customary'):
         AssertionError: Invalid symbols option got past the validation check.
     """
     SYMBOLS = {
-        'customary'     : ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'),
-        'customary_ext' : ('byte', 'kilo', 'mega', 'giga', 'tera', 'peta',
-                           'exa', 'zetta', 'iotta'),
-        'iec'           : ('Bi', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi',
-                           'Ei', 'Zi', 'Yi'),
-        'iec_ext'       : ('byte', 'kibi', 'mebi', 'gibi', 'tebi',
-                           'pebi', 'exbi', 'zebi', 'yobi')
+        'customary': ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'),
+        'customary_ext': ('byte', 'kilo', 'mega', 'giga', 'tera', 'peta',
+                          'exa', 'zetta', 'iotta'),
+        'iec': ('Bi', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi',
+                'Ei', 'Zi', 'Yi'),
+        'iec_ext': ('byte', 'kibi', 'mebi', 'gibi', 'tebi',
+                    'pebi', 'exbi', 'zebi', 'yobi')
     }
     n = int(n)
     if n < 0:
@@ -454,13 +453,13 @@ def human_to_bytes(s):
         AssertionError: If an invalid SYMBOLS key was found internally.
     """
     SYMBOLS = {
-        'customary'     : ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'),
-        'customary_ext' : ('byte', 'kilo', 'mega', 'giga', 'tera', 'peta',
-                           'exa', 'zetta', 'iotta'),
-        'iec'           : ('Bi', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi',
-                           'Ei', 'Zi', 'Yi'),
-        'iec_ext'       : ('byte', 'kibi', 'mebi', 'gibi', 'tebi',
-                           'pebi', 'exbi', 'zebi', 'yobi')
+        'customary': ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'),
+        'customary_ext': ('byte', 'kilo', 'mega', 'giga', 'tera', 'peta',
+                          'exa', 'zetta', 'iotta'),
+        'iec': ('Bi', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi',
+                'Ei', 'Zi', 'Yi'),
+        'iec_ext': ('byte', 'kibi', 'mebi', 'gibi', 'tebi',
+                    'pebi', 'exbi', 'zebi', 'yobi')
     }
     init = s
     num = ""
@@ -479,7 +478,7 @@ def human_to_bytes(s):
             letter = letter.upper()
         else:
             raise ValueError("can't interpret %r" % init)
-    prefix = {sset[0]:1}
+    prefix = {sset[0]: 1}
     if name.startswith('customary'):
         for i, s in enumerate(sset[1:]):
             prefix[s] = 1000 ** (i+1)

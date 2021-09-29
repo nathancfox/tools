@@ -1,11 +1,11 @@
 # Useful for interaction with the command line
 
 
-################################################################################
-#                                  CLI Output                                  #
-################################################################################
+###############################################################################
+#                                  CLI Output                                 #
+###############################################################################
 
-def propeller(duration, frequency):
+def propeller(duration, frequency=0.5):
     """Spin a propeller on the command line.
 
     Displays a single character oscillating propeller
@@ -20,8 +20,8 @@ def propeller(duration, frequency):
     \
 
     Args:
-        duration: Float. Number of seconds the propeller will spin.
-        frequency: Float. Number of full rotations per second.
+        duration: float. Number of seconds the propeller will spin.
+        frequency: float. Number of full rotations per second.
     """
     import time
 
@@ -30,7 +30,7 @@ def propeller(duration, frequency):
     counter = 0
     start = time.perf_counter()
     while time.perf_counter() < (start + duration):
-        print('\r' + chars[counter], end = '')
+        print('\r' + chars[counter], end='')
         counter = (counter + 1) % 8
         time.sleep(step_duration)
     print('\rDone!')
@@ -49,9 +49,9 @@ def pretty_str_list(list, width=50, indent='', sep=', ', one_per_line=False):
 
     For example:
         >>> test = ['apple', 'banana', 'cherry', 'date',
-                   'elderberry', 'fig', 'grapefruit']
+                   'elderberry', 'fig', 'grape']
         >>> test
-        ['apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grapefruit']
+        ['apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grape']
         >>> print(pprint.pformat(test, width = 30, indent = 4))
         [    'apple',
              'banana',
@@ -59,11 +59,11 @@ def pretty_str_list(list, width=50, indent='', sep=', ', one_per_line=False):
              'date',
              'elderberry',
              'fig',
-             'grapefruit']
+             'grape']
         >>> print(pretty_str_list(test, width = 30, indent = '    '))
             apple, banana, cherry,
             date, elderberry, fig,
-            grapefruit
+            grape
 
     Args:
         list: The list to convert into a pretty string. Items are
@@ -282,7 +282,9 @@ def get_ruler(m, n=None, ticks=True, indent='', ticks_above=True):
                 if pos_start_lab == pos_end_lab:
                     pos_labels = [pos_start_lab]
                 else:
-                    pos_labels = list(range(pos_start_lab, pos_end_lab + 1, 10))
+                    pos_labels = list(range(pos_start_lab,
+                                            pos_end_lab + 1,
+                                            10))
                 for i, lab in enumerate(pos_labels):
                     major_ticks += f'{" " * (10 - len(str(lab)))}{lab}'
         elif start == 0:
@@ -342,7 +344,6 @@ def color_print(string, color, file=None):
         Green
         Orange
         Blue
-        Purple
 
     Args:
         string: String. The text to be printed.
@@ -368,10 +369,9 @@ def color_print(string, color, file=None):
         color = '\033[33m'
     elif color == 'blue':
         color = '\033[34m'
-    elif color == 'purple':
-        color == '\033[35m'
     else:
         color_print('ERROR: Color not supported', 'red')
+        return
     print(color + string + '\033[0m', file=file)
 
 
@@ -526,9 +526,9 @@ def print_h5_tree(h5_item, show_dtypes=False, prefix='', file=None):
             print_h5_tree(h5_item[k], show_dtypes, prefix + '   ', file)
 
 
-################################################################################
-#                                  CLI Input                                   #
-################################################################################
+###############################################################################
+#                                  CLI Input                                  #
+###############################################################################
 
 def get_int(prompt, nonnegative=False):
     """Reads an integer input with error checking.
@@ -551,7 +551,7 @@ def get_int(prompt, nonnegative=False):
             repeat = True
             continue
         repeat = False
-        if nonnegative == True and value < 0:
+        if nonnegative and value < 0:
             print('ERROR: Please enter an integer >= 0!')
             repeat = True
             continue
@@ -579,7 +579,7 @@ def get_float(prompt, nonnegative=False):
             repeat = True
             continue
         repeat = False
-        if nonnegative == True and value < 0:
+        if nonnegative and value < 0:
             print('ERROR: Please enter a positive number!')
             repeat = True
             continue

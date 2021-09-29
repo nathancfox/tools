@@ -39,16 +39,16 @@ def convert_dict_to_dataframe(dict_of_dicts):
     for k, v in dict_of_dicts.items():
         if first_dict:
             ref_keys = pd.Series(sorted(list(v.keys())))
-            new_dict = {ref_key:[] for ref_key in ref_keys}
+            new_dict = {ref_key: [] for ref_key in ref_keys}
             first_dict = False
         index.append(k)
         test_keys = pd.Series(sorted(list(v.keys())))
         if (test_keys.shape[0] != ref_keys.shape[0]
-            or (test_keys != ref_keys).any()):
+                or (test_keys != ref_keys).any()):
             raise ValueError('Not all inner dicts have the same keys!')
         for k2, v2 in v.items():
             new_dict[k2].append(v2)
-    new_df = pd.DataFrame(new_dict, index = index)
+    new_df = pd.DataFrame(new_dict, index=index)
     return new_df
 
 
@@ -83,7 +83,6 @@ def mult_value_counts(df, cols=[], printed=True, **kwargs):
         for item in metadata_line.split(','):
             k, v = item.split(':')
             metadata[k.strip().lower()] = v.strip()
-        # metadata = {k.strip(): v.strip() for k, v in item.split(':') in metadata.split(',')}
         header = []
         if 'name' in metadata.keys():
             header.append(metadata['name'])
@@ -126,6 +125,7 @@ def get_penguins():
         a standard integer index range [0..]
     """
     return get_dataset('penguins')
+
 
 def get_dataset(dataset):
     """Retrieve one of several test datasets.
